@@ -1,25 +1,3 @@
-# Kafka Streams на Python (Faust): блокировка пользователей + цензура сообщений
-
-Учебный проект: потоковая обработка сообщений с двумя функциями —
-блокировкой пользователей и цензурой запрещённых слов, реализованная на
-[`faust-streaming`](https://github.com/faust-streaming/faust) — активно
-поддерживаемом форке оригинальной библиотеки Faust (Python-аналог Kafka
-Streams: агенты = stream processors, `app.Table` = persistent state store).
-
-## Структура репозитория
-
-```
-censorship_task/
-├── docker-compose.yml       # Kafka (KRaft), создание топиков, Faust-приложение
-└── faust_app/
-    ├── Dockerfile
-    ├── requirements.txt
-    ├── models.py             # faust.Record модели сообщений/событий
-    ├── censorship.py         # логика маскировки запрещённых слов
-    ├── app.py                # топики, таблицы (state store), агенты (stream processors)
-    └── send_test_data.py     # скрипт отправки тестовых данных во все топики
-```
-
 ## Топики Kafka
 
 | Топик               | Назначение                                                     |
