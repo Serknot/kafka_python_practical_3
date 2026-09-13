@@ -1,0 +1,74 @@
+version: "3.8"
+
+services:
+  kafka:
+    image: bitnami/kafka:3.7
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_CFG_NODE_ID: "1"
+      KAFKA_ENABLE_KRAFT: "yes"
+      KAFKA_CFG_PROCESS_ROLES: "controller,broker"
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_CFG_LISTENERS: "PLAINTEXT://:9092,CONTROLLER://:9093"
+      KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092"
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT"
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+      KAFKA_KRAFT_CLUSTER_ID: "NkU3OEVBNTcwNTJENDM3Qm"
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+      KAFKA_CFG_DEFAULT_REPLICATION_FACTOR: "1"
+      KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_CFG_MIN_INSYNC_REPLICAS: "1"
+    volumes:
+      - kafka-data:/bitnami/kafka
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server localhost:9092 --list"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - kafka-net
+
+  kafka-init:
+    image: bitnami/kafka:3.7
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        set -e
+        for topic in messages filtered_messages blocked_users banned_words; do
+          echo "Создаю топик: $$topic"
+          kafka-topics.sh --create --if-not-exists \
+            --topic "$$topic" \
+            --partitions 3 \
+            --replication-factor 1 \
+            --bootstrap-server kafka:9092
+        done
+        echo "Список топиков после создания:"
+        kafka-topics.sh --list --bootstrap-server kafka:9092
+    networks:
+      - kafka-net
+
+  faust-app:
+    build: ./faust_app
+    container_name: faust-app
+    depends_on:
+      kafka:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+    environment:
+      KAFKA_BROKER: "kafka://kafka:9092"
+      TOPIC_PARTITIONS: "3"
+    networks:
+      - kafka-net
+
+networks:
+  kafka-net:
+    driver: bridge
+
+volumes:
+  kafka-data:
